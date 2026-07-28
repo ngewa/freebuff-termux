@@ -1,0 +1,44 @@
+{
+  "name": "@nyxur/freebuff",
+  "version": "0.0.125",
+  "description": "Freebuff adaptado para Termux/Android con motor integrado y setup automático.",
+  "bin": {
+    "freebuff": "bin/freebuff.js"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "keywords": [
+    "freebuff",
+    "codebuff",
+    "termux",
+    "android",
+    "ai",
+    "coding-assistant",
+    "cli",
+    "terminal"
+  ],
+  "author": "nyxur",
+  "license": "MIT",
+  "dependencies": {
+    "gradient-string": "^3.0.0",
+    "tar": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "files": [
+    "bin/freebuff.js",
+    "lib/",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/farllirs/freebuff-termux.git"
+  },
+  "homepage": "https://freebuff.com",
+  "publishConfig": {
+    "access": "public"
+  }
+}
