@@ -1,14 +1,14 @@
 # Freebuff Termux Client
 
-Cliente adaptado para ejecutar Freebuff en Android a través de Termux. Soporta la última versión oficial de Freebuff (v0.2.x).
+Client adapted to run Freebuff on Android through Termux. Supports the latest official Freebuff release (v0.2.x).
 
-## Instalación
+## Installation
 
 ```bash
 npm install -g @nyxur/freebuff
 ```
 
-O desde este repositorio:
+Or from this repository:
 
 ```bash
 git clone https://github.com/ngewa/freebuff-termux.git
@@ -16,107 +16,195 @@ cd freebuff-termux
 npm install -g .
 ```
 
-## Configuración
+## Configuration
 
-Después de instalar, ejecuta el setup interactivo:
+After installing, run the interactive setup:
 
 ```bash
 freebuff setup
 ```
 
-Esto te preguntará:
-1. **Motor** (glibc-repo + glibc-runner) - Necesario para que el binario funcione en Termux
-2. **Skills** (ripgrep) - Para code_searcher
-3. **Descarga del binario oficial** (última versión compatible)
+It will ask you about:
+1. **Engine** (glibc-repo + glibc-runner) - Required for the binary to work on Termux
+2. **Skills** (ripgrep) - For code_searcher
+3. **Official binary download** (latest compatible version)
 
-## Actualización (Update)
+## Update
 
-Si recibes el mensaje *"This version of Freebuff is out of date"*, puedes actualizar directamente con:
+If you get the message *"This version of Freebuff is out of date"*, you can update directly with:
 
 ```bash
 freebuff update
 ```
 
-O reparar y actualizar automáticamente con:
+Or repair and update automatically with:
 
 ```bash
 freebuff doctor --fix
 ```
 
-## Uso
+## Usage
 
 ```bash
-# Iniciar Freebuff
+# Start Freebuff
 freebuff
 
-# Actualizar a la última versión
+# Update to the latest version
 freebuff update
 
-# Sin banner
+# Without banner
 freebuff --no-banner
 
-# Mostrar versión
+# Show version
 freebuff --version
 
-# Diagnóstico del sistema y chequeo de versión
+# System diagnostics and version check
 freebuff doctor
 
-# Diagnóstico + reparación / auto-update
+# Diagnostics + repair / auto-update
 freebuff doctor --fix
 
-# Historial de cambios
+# Changelog
 freebuff changelog
 
-# Limpiar caché
+# Clear cache
 freebuff clean
 ```
 
-## Variables de entorno
+## Environment variables
 
 ```bash
-# Auto-configurado por el launcher:
+# Auto-configured by the launcher:
 export CODEBUFF_rg_PATH=/data/data/com.termux/files/usr/bin/rg
 export TERM=xterm-256color
 
-# Proxy (opcional):
+# Proxy (optional):
 export HTTP_PROXY=http://proxy:8080
 export HTTPS_PROXY=http://proxy:8080
 ```
 
-## Características
+## Features
 
-- Detección automática de Termux
-- Soporte `grun` (glibc-runner) para binarios glibc
-- Detección automática de la última versión upstream desde npm registry
-- Comando directo `freebuff update`
-- Soporte completo de redirecciones HTTP (301, 302, 307, 308)
-- Sincronización automática con binario en `/data/data/com.termux/files/usr/share/freebuff`
-- Configuración automática de `CODEBUFF_rg_PATH`
-- Setup interactivo paso a paso
-- Banner animado con logo FREEBUFF y gradientes rotando
-- Descarga HTTP nativa (sin dependencia de curl)
-- Soporte proxy (HTTP_PROXY/HTTPS_PROXY)
-- Resume de descarga (HTTP Range)
-- Reintentos con backoff exponencial
-- Diagnóstico del sistema (`freebuff doctor`)
-- Skill bawaan untuk AI coding assistant (`.agents/skills/freebuff-updater`)
+- Automatic Termux detection
+- `grun` (glibc-runner) support for glibc binaries
+- Automatic detection of the latest upstream version from the npm registry
+- Direct `freebuff update` command
+- Full HTTP redirect support (301, 302, 307, 308)
+- Automatic sync with the binary in `/data/data/com.termux/files/usr/share/freebuff`
+- Automatic `CODEBUFF_rg_PATH` configuration
+- Step-by-step interactive setup
+- Animated banner with the FREEBUFF logo and rotating gradients
+- Native HTTP download (no curl dependency)
+- Proxy support (HTTP_PROXY/HTTPS_PROXY)
+- Download resume (HTTP Range)
+- Retries with exponential backoff
+- System diagnostics (`freebuff doctor`)
+- Built-in skill for AI coding assistants (`.agents/skills/freebuff-updater`)
 
 ## AI Agent Skill (Antigravity, Claude, Cursor)
 
-Repositori ini menyertakan skill agent bawaan di `.agents/skills/freebuff-updater/` untuk AI coding assistant. AI dapat langsung mendeteksi skill ini untuk memeriksa status, melakukan diagnosa, dan memperbarui biner Freebuff di Termux secara otomatis.
+This repository ships a built-in agent skill in `.agents/skills/freebuff-updater/` for AI coding assistants. The AI can discover it directly to check the status, run diagnostics, and update the Freebuff binary on Termux automatically.
 
-Kamu juga bisa mengeksekusi skrip pembaruannya langsung melalui:
+You can also run the updater script straight from the repo:
 ```bash
 npm run update:bin
-# atau langsung:
+# or directly:
 bash .agents/skills/freebuff-updater/scripts/update.sh
 ```
 
-## Issues conocidos
+## Known issues
 
-- `read_url` puede tener timeout DNS en algunas redes Android
-- `python3` no incluido (opcional: `pkg install python`)
+- `read_url` may hit DNS timeouts on some Android networks
+- `python3` is not bundled (optional: `pkg install python`)
+- **Dead terminal tool**: the agent answers `terminal command broker failed ... protocol response was missing` because Freebuff starts through the glibc loader and its own broker is launched as `ld-linux-aarch64.so.1 --terminal-command-broker`. Repair it from a plain terminal (outside Freebuff) with:
+  ```bash
+  bash .agents/skills/freebuff-updater/scripts/fix-terminal-broker.sh
+  ```
+  and restart Freebuff. See [Troubleshooting: Terminal Command Broker](#troubleshooting-terminal-command-broker) below and `.agents/skills/freebuff-updater/SKILL.md` for details.
+
+## Troubleshooting: Terminal Command Broker
+
+If the agent's terminal tool is dead — every command returns
+`terminal command broker failed: terminal command broker protocol response was missing` —
+the broker is being spawned through the glibc loader and the loader rejects its own flag.
+
+### Symptoms
+
+- Any command run by the agent inside Freebuff fails with the broker error above, in both
+  foreground and background mode.
+- Freebuff itself starts and answers normally (`freebuff --version` works).
+- The per-run logs under `$TMPDIR/codebuff-process-*/stderr.log` end with:
+
+  ```
+  /data/data/com.termux/files/usr/glibc/lib/ld-linux-aarch64.so.1: unrecognized option '--terminal-command-broker'
+  ```
+
+### Root cause
+
+Freebuff runs on Termux through the glibc loader (`glibc-runner` / `grun`, or the Bionic
+helper at `$PREFIX/bin/freebuff`). When an ELF binary is started by executing the loader
+explicitly (for example `ld-linux-aarch64.so.1 --library-path ... freebuff.real`), the kernel
+keeps the **loader** as `/proc/self/exe`. Node.js derives `process.execPath` from that same
+path, so the CLI believes its own executable is:
+
+```
+/data/data/com.termux/files/usr/glibc/lib/ld-linux-aarch64.so.1
+```
+
+When it self-spawns the terminal command broker, the command line therefore becomes:
+
+```
+ld-linux-aarch64.so.1 --terminal-command-broker
+```
+
+and the loader aborts because `--terminal-command-broker` is not one of its options.
+
+### Fix
+
+Run this from a **plain Termux shell, outside Freebuff** (the agent's terminal is broken, so
+it cannot repair itself):
+
+```bash
+bash .agents/skills/freebuff-updater/scripts/fix-terminal-broker.sh
+```
+
+The script:
+
+1. Sets a working `PT_INTERP` + `RUNPATH` on the real binary (`grun -c`, i.e. `patchelf`) so the
+   kernel can start it directly. Backs the original up to `<binary>.bak`.
+2. Replaces `$PREFIX/bin/freebuff` (the loader wrapper) with a small shell launcher that
+   `exec`s the real binary, so `/proc/self/exe` — and therefore the CLI's self-path — points at
+   the real binary again. The old helper is backed up to `$PREFIX/bin/freebuff-helper.bak`,
+   and the launcher falls back to `grun` if direct execution is impossible.
+
+Restart Freebuff afterwards.
+
+### Verify
+
+```bash
+readelf -l "$PREFIX/share/freebuff/freebuff.real" | grep interpreter   # -> glibc loader path
+freebuff --version                                                     # -> prints the version
+```
+
+Then ask the agent to run any command; the broker error must be gone.
+
+### Revert
+
+```bash
+bash .agents/skills/freebuff-updater/scripts/fix-terminal-broker.sh --revert
+```
+
+This restores `$PREFIX/bin/freebuff` from `freebuff-helper.bak`. The `patchelf` changes on the
+real binary are harmless and can stay.
+
+### Notes
+
+- Requires `glibc-runner` (loader) and `patchelf`; the script falls back to the `patchelf`
+  shipped in `$PREFIX/glibc/bin` and tries `pkg install patchelf` when neither is available.
+- If the loader path does not exist at all, run `pkg install glibc-repo glibc-runner` first.
+- Reinstalling or updating the `freebuff` package recreates the loader wrapper, so the repair
+  has to be reapplied after such an update.
 
 ---
 
-**Nota:** Este proyecto es un launcher adaptado para Termux y no oficial de Freebuff.
+**Note:** This project is an unofficial, adapted Termux launcher for Freebuff.
