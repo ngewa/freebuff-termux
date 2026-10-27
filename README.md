@@ -99,6 +99,18 @@ export HTTPS_PROXY=http://proxy:8080
 - Resume de descarga (HTTP Range)
 - Reintentos con backoff exponencial
 - Diagnóstico del sistema (`freebuff doctor`)
+- Skill bawaan untuk AI coding assistant (`.agents/skills/freebuff-updater`)
+
+## AI Agent Skill (Antigravity, Claude, Cursor)
+
+Repositori ini menyertakan skill agent bawaan di `.agents/skills/freebuff-updater/` untuk AI coding assistant. AI dapat langsung mendeteksi skill ini untuk memeriksa status, melakukan diagnosa, dan memperbarui biner Freebuff di Termux secara otomatis.
+
+Kamu juga bisa mengeksekusi skrip pembaruannya langsung melalui:
+```bash
+npm run update:bin
+# atau langsung:
+bash .agents/skills/freebuff-updater/scripts/update.sh
+```
 
 ## Issues conocidos
 
