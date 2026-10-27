@@ -1,11 +1,19 @@
 # Freebuff Termux Client
 
-Cliente adaptado para ejecutar Freebuff en Android a través de Termux.
+Cliente adaptado para ejecutar Freebuff en Android a través de Termux. Soporta la última versión oficial de Freebuff (v0.2.x).
 
 ## Instalación
 
 ```bash
 npm install -g @nyxur/freebuff
+```
+
+O desde este repositorio:
+
+```bash
+git clone https://github.com/ngewa/freebuff-termux.git
+cd freebuff-termux
+npm install -g .
 ```
 
 ## Configuración
@@ -17,8 +25,23 @@ freebuff setup
 ```
 
 Esto te preguntará:
-1. **Motor** (glibc-repo + glibc-runner) - Necesario para que el binario funcione
+1. **Motor** (glibc-repo + glibc-runner) - Necesario para que el binario funcione en Termux
 2. **Skills** (ripgrep) - Para code_searcher
+3. **Descarga del binario oficial** (última versión compatible)
+
+## Actualización (Update)
+
+Si recibes el mensaje *"This version of Freebuff is out of date"*, puedes actualizar directamente con:
+
+```bash
+freebuff update
+```
+
+O reparar y actualizar automáticamente con:
+
+```bash
+freebuff doctor --fix
+```
 
 ## Uso
 
@@ -26,16 +49,19 @@ Esto te preguntará:
 # Iniciar Freebuff
 freebuff
 
+# Actualizar a la última versión
+freebuff update
+
 # Sin banner
 freebuff --no-banner
 
 # Mostrar versión
 freebuff --version
 
-# Diagnóstico
+# Diagnóstico del sistema y chequeo de versión
 freebuff doctor
 
-# Diagnóstico + reparación
+# Diagnóstico + reparación / auto-update
 freebuff doctor --fix
 
 # Historial de cambios
@@ -61,6 +87,10 @@ export HTTPS_PROXY=http://proxy:8080
 
 - Detección automática de Termux
 - Soporte `grun` (glibc-runner) para binarios glibc
+- Detección automática de la última versión upstream desde npm registry
+- Comando directo `freebuff update`
+- Soporte completo de redirecciones HTTP (301, 302, 307, 308)
+- Sincronización automática con binario en `/data/data/com.termux/files/usr/share/freebuff`
 - Configuración automática de `CODEBUFF_rg_PATH`
 - Setup interactivo paso a paso
 - Banner animado con logo FREEBUFF y gradientes rotando
@@ -77,4 +107,4 @@ export HTTPS_PROXY=http://proxy:8080
 
 ---
 
-**Nota:** Este proyecto es un fork modificado y no oficial.
+**Nota:** Este proyecto es un launcher adaptado para Termux y no oficial de Freebuff.

@@ -9,8 +9,8 @@ const os = require('os');
 
 const { isTermux, getRunner, getPlatform, getArch, setupRgPath, TERMUX_PREFIX } = require('../lib/termux');
 const { colors } = require('../lib/spinner');
-const { getBinaryPath, checkBinary, getCurrentVersion, getMetadataPath } = require('../lib/download');
-const { cmdSetup, interactiveSetup, printStatus } = require('../lib/setup');
+const { getBinaryPath, checkBinary, getCurrentVersion, getMetadataPath, getLatestVersion } = require('../lib/download');
+const { cmdSetup, cmdUpdate, interactiveSetup, printStatus } = require('../lib/setup');
 const { VERSION, PKG_NAME } = require('../lib/version');
 
 const BIN_DIR = join(__dirname, '..');
@@ -30,8 +30,9 @@ function showHelp() {
   };
 
   section('Sistema', [
-    { cmd: 'setup', desc: 'Instalaci\u00f3n interactiva del sistema' },
-    { cmd: '--version', desc: 'Informaci\u00f3n de la versi\u00f3n' },
+    { cmd: 'setup', desc: 'Instalación interactiva del sistema' },
+    { cmd: 'update', desc: 'Actualizar Freebuff a la última versión' },
+    { cmd: '--version', desc: 'Información de la versión' },
     { cmd: '--help', desc: 'Mostrar esta ayuda' },
     { cmd: '--no-banner', desc: 'Omitir banner animado' },
     { cmd: '--json', desc: 'Salida JSON (para --version)' },
@@ -127,6 +128,14 @@ function showBanner() {
 
 
 var CHANGELOG = [
+  { version: '0.2.34', changes: [
+    'Actualizado a base Freebuff v0.2.34',
+    'Nuevo comando "freebuff update" para actualizar en un solo paso',
+    'Detección automática de la última versión upstream desde npm registry',
+    'Soporte completo de redirecciones HTTP (301, 302, 307, 308) en descargas',
+    'Sincronización automática con binario del sistema Termux (/usr/share/freebuff)',
+    'Solución al error "This version of Freebuff is out of date"',
+  ]},
   { version: '0.0.125', changes: [
     'Banner animado con 9 gradientes rotando sobre logo FREEBUFF',
     'Descarga HTTP nativa Node (sin dependencia curl)',
@@ -227,10 +236,27 @@ async function showDoctor(fix) {
 
   var binVer = getCurrentVersion();
   checks.push({
-    name: 'Versi\u00f3n binario',
+    name: 'Versión binario',
     ok: !!binVer,
-    detail: binVer || colors.yellow + 'Desconocida' + colors.reset,
+    detail: binVer ? 'v' + binVer : colors.yellow + 'Desconocida' + colors.reset,
   });
+
+  var latestVer = null;
+  try { latestVer = await getLatestVersion(5000); } catch (e) {}
+  if (latestVer) {
+    var isUpToDate = !binVer || binVer === latestVer;
+    checks.push({
+      name: 'Actualizaciones',
+      ok: isUpToDate,
+      detail: isUpToDate
+        ? 'Al día (v' + (binVer || latestVer) + ')'
+        : 'Actualización disponible: v' + latestVer + ' (actual: v' + (binVer || 'ninguna') + ')',
+    });
+    if (!isUpToDate && fix) fixes.push(function() {
+      var _downloadBinary = require('../lib/download').downloadBinary;
+      return _downloadBinary(latestVer);
+    });
+  }
 
   var skills = ['rg', 'git'];
   var installedSkills = skills.filter(function(s) { return _checkPkgTermux(s); });
@@ -406,6 +432,11 @@ async function main() {
 
   if (subcommand === 'changelog') {
     showChangelog();
+    process.exit(0);
+  }
+
+  if (subcommand === 'update') {
+    await cmdUpdate();
     process.exit(0);
   }
 

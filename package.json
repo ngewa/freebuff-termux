@@ -1,6 +1,6 @@
 {
   "name": "@nyxur/freebuff",
-  "version": "0.0.125",
+  "version": "0.2.34",
   "description": "Freebuff adaptado para Termux/Android con motor integrado y setup automático.",
   "bin": {
     "freebuff": "bin/freebuff.js"
@@ -19,7 +19,7 @@
     "cli",
     "terminal"
   ],
-  "author": "nyxur",
+  "author": "ngewa",
   "license": "MIT",
   "dependencies": {
     "gradient-string": "^3.0.0",
@@ -35,7 +35,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/farllirs/freebuff-termux.git"
+    "url": "git+https://github.com/ngewa/freebuff-termux.git"
   },
   "homepage": "https://freebuff.com",
   "publishConfig": {
