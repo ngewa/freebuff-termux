@@ -580,7 +580,9 @@ async function main() {
     // No exportar LD_LIBRARY_PATH: el binario glibc ya trae RUNPATH a
     // $PREFIX/glibc/lib y exportarlo rompe a los hijos biónicos (bash, rg,
     // git) con "invalid ELF header" / "bad ELF magic" al cargar libc.so.
+    // LD_PRELOAD bionik juga meracuni biner glibc -> "invalid ELF header".
     delete env.LD_LIBRARY_PATH;
+    delete env.LD_PRELOAD;
     var glibcCa = join(TERMUX_PREFIX, 'etc', 'tls', 'cert.pem');
     if (!env.SSL_CERT_FILE && existsSync(glibcCa)) env.SSL_CERT_FILE = glibcCa;
   }

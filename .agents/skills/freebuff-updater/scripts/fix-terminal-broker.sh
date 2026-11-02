@@ -166,7 +166,7 @@ if head -c4 "$WRAPPER" 2>/dev/null | grep -q 'ELF'; then
   else
     ok "backup already present: $WRAPPER_BAK"
   fi
-elif grep -q 'freebuff-launcher-version: 2' "$WRAPPER" 2>/dev/null; then
+elif grep -q 'freebuff-launcher-version: 3' "$WRAPPER" 2>/dev/null; then
   ok "$WRAPPER is already up to date"
   SKIP_LAUNCHER=1
 fi
