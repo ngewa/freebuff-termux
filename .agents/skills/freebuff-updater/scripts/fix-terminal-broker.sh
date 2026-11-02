@@ -159,18 +159,23 @@ fi
 say ""
 say "== 4/5 Install direct-exec launcher =="
 
-if ! head -c4 "$WRAPPER" 2>/dev/null | grep -q 'ELF'; then
-  warn "$WRAPPER is already a script - leaving it in place"
-else
+SKIP_LAUNCHER=0
+if head -c4 "$WRAPPER" 2>/dev/null | grep -q 'ELF'; then
   if [ ! -f "$WRAPPER_BAK" ]; then
     cp -p "$WRAPPER" "$WRAPPER_BAK" && ok "backup: $WRAPPER_BAK"
   else
     ok "backup already present: $WRAPPER_BAK"
   fi
+elif grep -q 'freebuff-launcher-version: 2' "$WRAPPER" 2>/dev/null; then
+  ok "$WRAPPER is already up to date"
+  SKIP_LAUNCHER=1
+fi
 
+if [ "$SKIP_LAUNCHER" != 1 ]; then
   NEW="$WRAPPER.new.$$"
   cat > "$NEW" <<EOF
 #!/data/data/com.termux/files/usr/bin/bash
+# freebuff-launcher-version: 2
 # Freebuff launcher: start the glibc binary directly (PT_INTERP + RUNPATH are
 # set), so /proc/self/exe is the real binary and self-spawned helpers such as
 # the terminal command broker work. Falls back to the glibc loader wrapper if
@@ -178,7 +183,9 @@ else
 GLIBC_PREFIX="$GLIBC_PREFIX"
 REAL="$REAL"
 [ -f "\$HOME/.config/freebuff/freebuff" ] && REAL="\$HOME/.config/freebuff/freebuff"
-export LD_LIBRARY_PATH="\$GLIBC_PREFIX/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+# Do NOT export LD_LIBRARY_PATH - glibc binary has RUNPATH; exporting breaks
+# bionic children (bash, rg, git) which pick up glibc's ld-script libc.so.
+unset LD_LIBRARY_PATH
 [ -f "$PREFIX/etc/tls/cert.pem" ] && export SSL_CERT_FILE="$PREFIX/etc/tls/cert.pem"
 "\$REAL" "\$@"
 status=\$?
