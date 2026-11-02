@@ -1,6 +1,6 @@
 {
   "name": "@nyxur/freebuff",
-  "version": "0.2.34",
+  "version": "0.2.36",
   "description": "Freebuff adaptado para Termux/Android con motor integrado y setup automático.",
   "bin": {
     "freebuff": "bin/freebuff.js"
@@ -32,6 +32,7 @@
   "files": [
     "bin/freebuff.js",
     "lib/",
+    "install.sh",
     "README.md",
     ".agents/"
   ],

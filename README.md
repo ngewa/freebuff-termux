@@ -4,11 +4,29 @@ Client adapted to run Freebuff on Android through Termux. Supports the latest of
 
 ## Installation
 
+One-liner (Termux). It installs Node.js if needed, then opens a small menu:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ngewa/freebuff-termux/main/install.sh | bash
+```
+
+The menu offers **Install / Update**, installing a specific version, status, and
+diagnostics. Non-interactive:
+
+```bash
+bash install.sh install          # install or update to the latest release
+bash install.sh version 0.2.34   # install / switch to an exact version
+bash install.sh check            # installed vs available versions + doctor
+bash install.sh doctor           # diagnostics + automatic repair
+```
+
+Or with npm:
+
 ```bash
 npm install -g @nyxur/freebuff
 ```
 
-Or from this repository:
+From this repository:
 
 ```bash
 git clone https://github.com/ngewa/freebuff-termux.git
@@ -18,7 +36,23 @@ npm install -g .
 
 ## Configuration
 
-After installing, run the interactive setup:
+Everything is installed automatically on the first run: engine, skills and the official
+binary. Just start it:
+
+```bash
+freebuff
+```
+
+When a component is missing, `freebuff` installs it before launching, and on every start it
+checks the npm registry for a newer upstream binary and updates itself. To skip that check:
+
+```bash
+freebuff --no-update
+# or
+FREEBUFF_NO_AUTO_UPDATE=1 freebuff
+```
+
+To run the guided setup instead:
 
 ```bash
 freebuff setup
@@ -29,17 +63,34 @@ It will ask you about:
 2. **Skills** (ripgrep) - For code_searcher
 3. **Official binary download** (latest compatible version)
 
-## Update
+## Install / Update
 
-If you get the message *"This version of Freebuff is out of date"*, you can update directly with:
+`freebuff install` installs everything that is missing (engine, skills and the official
+binary) without asking anything:
+
+```bash
+freebuff install
+freebuff install 0.2.34   # pin an exact version
+```
+
+`freebuff update` installs or switches the binary version. With a terminal attached it
+shows the recent upstream releases and lets you pick one (numbered list, `c` to type any
+version, `0` to cancel), so you can upgrade **or** downgrade:
+
+```bash
+freebuff update             # interactive version selector
+freebuff update 0.2.30      # exact version, no questions
+freebuff update --check     # installed vs available versions, no changes
+freebuff update --force     # reinstall even if the version matches
+freebuff update --refresh   # ignore the 5-minute version cache
+```
+
+Versions are read from the npm registry and cached for 5 minutes in
+`~/.cache/freebuff/releases.json`. Updates also happen automatically on every start; the
+message *"This version of Freebuff is out of date"* is fixed by the next start or by:
 
 ```bash
 freebuff update
-```
-
-Or repair and update automatically with:
-
-```bash
 freebuff doctor --fix
 ```
 
@@ -49,8 +100,14 @@ freebuff doctor --fix
 # Start Freebuff
 freebuff
 
-# Update to the latest version
+# Install missing pieces (engine, skills, binary)
+freebuff install
+
+# Update / switch version (interactive selector)
 freebuff update
+
+# Installed vs available versions
+freebuff update --check
 
 # Without banner
 freebuff --no-banner
@@ -85,6 +142,15 @@ export HTTPS_PROXY=http://proxy:8080
 
 ## Features
 
+- One-line installer with an Install / Update menu (`install.sh`)
+- Automatic terminal-broker repair: the binary runs directly instead of through the glibc loader
+- `freebuff broker` shows the broker state, `--fix` repairs it, `--revert` restores the launcher
+- `freebuff install` for a non-interactive full install
+- `freebuff update` with a version selector (upgrade or downgrade)
+- `freebuff update --check` shows installed and available versions
+- Version list from the npm registry, cached for 5 minutes (`--refresh` to bypass)
+- Automatic install of engine, skills and binary on first run
+- Automatic update check on every start (`--no-update` / `FREEBUFF_NO_AUTO_UPDATE=1` to skip)
 - Automatic Termux detection
 - `grun` (glibc-runner) support for glibc binaries
 - Automatic detection of the latest upstream version from the npm registry
@@ -120,7 +186,8 @@ bash .agents/skills/freebuff-updater/scripts/update.sh
   ```bash
   bash .agents/skills/freebuff-updater/scripts/fix-terminal-broker.sh
   ```
-  and restart Freebuff. See [Troubleshooting: Terminal Command Broker](#troubleshooting-terminal-command-broker) below and `.agents/skills/freebuff-updater/SKILL.md` for details.
+  and restart Freebuff. The launcher also repairs it automatically on start, and
+  `freebuff broker --fix` forces the repair (see below).
 
 ## Troubleshooting: Terminal Command Broker
 
@@ -167,6 +234,19 @@ it cannot repair itself):
 ```bash
 bash .agents/skills/freebuff-updater/scripts/fix-terminal-broker.sh
 ```
+
+The launcher does the first half of this automatically: on every start it marks the real
+binary with `PT_INTERP` + `RUNPATH` (`grun -c`) and executes it directly, so
+`/proc/self/exe` is the binary again and the broker works. To force it, or to check the
+state:
+
+```bash
+freebuff broker          # diagnosis: loader, binary, launcher, direct exec
+freebuff broker --fix    # patch the binary and replace an ELF launcher with a script
+freebuff broker --revert # restore $PREFIX/bin/freebuff from freebuff-helper.bak
+```
+
+Disable the automatic repair with `FREEBUFF_NO_BROKER_FIX=1`.
 
 The script:
 

@@ -10,7 +10,8 @@ const os = require('os');
 const { isTermux, getRunner, getPlatform, getArch, setupRgPath, TERMUX_PREFIX } = require('../lib/termux');
 const { colors } = require('../lib/spinner');
 const { getBinaryPath, checkBinary, getCurrentVersion, getMetadataPath, getLatestVersion } = require('../lib/download');
-const { cmdSetup, cmdUpdate, interactiveSetup, printStatus } = require('../lib/setup');
+const { cmdSetup, cmdUpdate, cmdInstall, interactiveSetup, printStatus, printVersionStatus } = require('../lib/setup');
+const { ensureDirectExec, cmdBroker } = require('../lib/broker');
 const { VERSION, PKG_NAME } = require('../lib/version');
 
 const BIN_DIR = join(__dirname, '..');
@@ -30,8 +31,11 @@ function showHelp() {
   };
 
   section('Sistema', [
+    { cmd: 'install', desc: 'Instalar motor, skills y binario (sin preguntas)' },
+    { cmd: 'update', desc: 'Instalar o cambiar la versión de Freebuff' },
+    { cmd: 'update --check', desc: 'Ver versión instalada y disponibles' },
     { cmd: 'setup', desc: 'Instalación interactiva del sistema' },
-    { cmd: 'update', desc: 'Actualizar Freebuff a la última versión' },
+    { cmd: '--no-update', desc: 'Iniciar sin auto-actualización' },
     { cmd: '--version', desc: 'Información de la versión' },
     { cmd: '--help', desc: 'Mostrar esta ayuda' },
     { cmd: '--no-banner', desc: 'Omitir banner animado' },
@@ -41,6 +45,9 @@ function showHelp() {
   section('Diagn\u00f3stico', [
     { cmd: 'doctor', desc: 'Diagn\u00f3stico completo del sistema' },
     { cmd: 'doctor --fix', desc: 'Diagn\u00f3stico + reparaci\u00f3n autom\u00e1tica' },
+    { cmd: 'broker', desc: 'Estado del broker de comandos de terminal' },
+    { cmd: 'broker --fix', desc: 'Reparar el broker (ejecuci\u00f3n directa)' },
+    { cmd: 'broker --revert', desc: 'Restaurar el lanzador original' },
   ]);
 
   section('Escritorio', [
@@ -128,7 +135,26 @@ function showBanner() {
 
 
 var CHANGELOG = [
+  { version: '0.2.36', changes: [
+    'Reparación automática del broker de comandos de terminal en Termux',
+    'El binario se ejecuta directamente (PT_INTERP + RUNPATH) en vez de vía grun',
+    'Nuevo comando "freebuff broker" (diagnóstico) y "freebuff broker --fix"',
+    '"freebuff broker --revert" restaura el lanzador original respaldado',
+    'Fallback automático a grun si la ejecución directa falla al arrancar',
+    'doctor incluye la comprobación del broker y lo repara con --fix',
+  ]},
+  { version: '0.2.35', changes: [
+    'Nuevo comando "freebuff install" (motor + skills + binario en un paso)',
+    'Comando "freebuff update" con selector de versión (subir o bajar de versión)',
+    '"freebuff update --check" muestra la versión instalada y las disponibles',
+    'Lista de versiones desde el registro npm con caché de 5 min y --refresh',
+    'Instalación directa de una versión concreta: freebuff update 0.2.30',
+    'Instalador de una línea con menú Install / Update (install.sh)',
+  ]},
   { version: '0.2.34', changes: [
+    'Instalación automática de motor, skills y binario al ejecutar freebuff',
+    'Auto-actualización del binario al iniciar (desactiva con --no-update)',
+    'Variable FREEBUFF_NO_AUTO_UPDATE=1 para entornos sin red',
     'Actualizado a base Freebuff v0.2.34',
     'Nuevo comando "freebuff update" para actualizar en un solo paso',
     'Detección automática de la última versión upstream desde npm registry',
@@ -233,6 +259,16 @@ async function showDoctor(fix) {
     var ver = getCurrentVersion() || VERSION;
     return _downloadBinary(ver);
   });
+
+  var broker = isTermux ? ensureDirectExec() : { direct: true, reason: 'no es Termux' };
+  checks.push({
+    name: 'Broker de terminal',
+    ok: broker.direct,
+    detail: broker.direct
+      ? 'Ejecuci\u00f3n directa (broker OK)'
+      : (broker.reason || 'se inicia v\u00eda loader glibc'),
+  });
+  if (!broker.direct && fix) fixes.push(function() { return ensureDirectExec({ force: true }); });
 
   var binVer = getCurrentVersion();
   checks.push({
@@ -384,6 +420,13 @@ function showVersion(json) {
 }
 
 
+function reportSpawnError(err, binaryPath) {
+  console.error('\n ' + colors.red + '\u2718' + colors.reset + ' Error al iniciar Freebuff: ' + err.message);
+  console.log('   ' + colors.dim + 'Binario: ' + binaryPath + colors.reset);
+  console.log('   ' + colors.dim + 'Ejecuta: ' + colors.cyan + 'freebuff broker --fix' + colors.reset + colors.dim + ' o ' + colors.cyan + 'freebuff doctor --fix' + colors.reset + '\n');
+  process.exit(1);
+}
+
 async function main() {
   var rawArgs = process.argv.slice(2);
 
@@ -401,6 +444,12 @@ async function main() {
   var bypassIndex = rawArgs.indexOf('--bypass');
   var isBypass = bypassIndex !== -1;
   if (isBypass) rawArgs.splice(bypassIndex, 1);
+
+  
+  var noUpdateIndex = rawArgs.indexOf('--no-update');
+  if (noUpdateIndex === -1) noUpdateIndex = rawArgs.indexOf('--no-auto-update');
+  var isNoUpdate = noUpdateIndex !== -1 || process.env.FREEBUFF_NO_AUTO_UPDATE === '1';
+  if (noUpdateIndex !== -1) rawArgs.splice(noUpdateIndex, 1);
 
   
   var subcommand = rawArgs.length > 0 && !rawArgs[0].startsWith('-') ? rawArgs[0].toLowerCase() : null;
@@ -435,9 +484,32 @@ async function main() {
     process.exit(0);
   }
 
-  if (subcommand === 'update') {
-    await cmdUpdate();
-    process.exit(0);
+  if (subcommand === 'broker') {
+    var brokerOk = cmdBroker({
+      fix: rawArgs.indexOf('--fix') !== -1,
+      revert: rawArgs.indexOf('--revert') !== -1,
+    });
+    process.exit(brokerOk ? 0 : 1);
+  }
+
+  if (subcommand === 'install' || subcommand === 'update') {
+    var rest = rawArgs.slice(1);
+    var wantsCheck = rest.indexOf('--check') !== -1 || rest.indexOf('--list') !== -1;
+    var opts = {
+      version: rest.filter(function(a) { return !a.startsWith('-'); })[0] || null,
+      force: rest.indexOf('--force') !== -1,
+      refresh: rest.indexOf('--refresh') !== -1 || rest.indexOf('-r') !== -1,
+    };
+
+    if (wantsCheck) {
+      await printVersionStatus({ refresh: opts.refresh });
+      process.exit(0);
+    }
+
+    var ok = subcommand === 'install'
+      ? await cmdInstall(opts)
+      : await cmdUpdate(opts);
+    process.exit(ok ? 0 : 1);
   }
 
   
@@ -460,7 +532,9 @@ async function main() {
   }
 
   
-  await interactiveSetup();
+  if (!(await interactiveSetup({ autoUpdate: !isNoUpdate }))) {
+    process.exit(1);
+  }
 
   
   var binCheck = checkBinary();
@@ -482,18 +556,32 @@ async function main() {
   
   var binaryPath = getBinaryPath();
   var runner = getRunner();
+  var direct = ensureDirectExec();
   var spawnCmd = binaryPath;
   var spawnArgs = rawArgs;
+  var launchedDirect = direct.direct;
 
-  if (runner === 'grun') {
+  if (!launchedDirect && runner === 'grun') {
     spawnCmd = 'grun';
     spawnArgs = [binaryPath].concat(rawArgs);
+    if (process.env.FREEBUFF_NO_BROKER_FIX !== '1') {
+      console.log(' ' + colors.yellow + '\u26A0' + colors.reset + ' Broker de terminal: ejecución directa no disponible, usando grun.');
+      console.log('   ' + colors.dim + 'Repara con: ' + colors.cyan + 'freebuff broker --fix' + colors.reset + colors.dim + ' (' + (direct.reason || 'sin motivo') + ')' + colors.reset);
+    }
   }
 
   var env = Object.assign({}, process.env, {
     PATH: process.env.PATH + ':' + join(TERMUX_PREFIX, 'bin'),
     TERM: process.env.TERM || 'xterm-256color',
   });
+
+  
+  if (launchedDirect && isTermux) {
+    var glibcLib = join(TERMUX_PREFIX, 'glibc', 'lib');
+    env.LD_LIBRARY_PATH = env.LD_LIBRARY_PATH ? glibcLib + ':' + env.LD_LIBRARY_PATH : glibcLib;
+    var glibcCa = join(TERMUX_PREFIX, 'etc', 'tls', 'cert.pem');
+    if (!env.SSL_CERT_FILE && existsSync(glibcCa)) env.SSL_CERT_FILE = glibcCa;
+  }
 
   if (isTermux && !env.CODEBUFF_rg_PATH) {
     var rgPath = join(TERMUX_PREFIX, 'bin', 'rg');
@@ -505,10 +593,13 @@ async function main() {
   var child2 = spawn(spawnCmd, spawnArgs, { stdio: 'inherit', env: env });
   child2.on('exit', function(code) { process.exit(code || 0); });
   child2.on('error', function(err) {
-    console.error('\n ' + colors.red + '\u2718' + colors.reset + ' Error al iniciar Freebuff: ' + err.message);
-    console.log('   ' + colors.dim + 'Binario: ' + binaryPath + colors.reset);
-    console.log('   ' + colors.dim + 'Ejecuta: ' + colors.cyan + 'freebuff doctor --fix' + colors.reset + colors.dim + ' para diagnosticar' + colors.reset + '\n');
-    process.exit(1);
+    if (launchedDirect && runner === 'grun') {
+      var fallback = spawn('grun', [binaryPath].concat(rawArgs), { stdio: 'inherit', env: env });
+      fallback.on('exit', function(code) { process.exit(code || 0); });
+      fallback.on('error', function(err2) { reportSpawnError(err2, binaryPath); });
+      return;
+    }
+    reportSpawnError(err, binaryPath);
   });
 }
 
